@@ -30,7 +30,7 @@ templates.env.filters['ppjson'] = ppjson
 
 bedrock_agent_runtime_client = boto3.client('bedrock-agent-runtime')
 
-@app.get("/use_case/questions", response_class=HTMLResponse, tags=['org-shield'])
+@app.get("/use_case/questions", response_class=HTMLResponse, tags=['bedrock-agent'])
 async def switch_use_case(request: Request):
     questions = [
          "What was John Denny's salary in 1986?",
