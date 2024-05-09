@@ -15,30 +15,37 @@ outputLocation = os.environ['ATHENA_RESULTS_BUCKET']
 database_name = os.environ['DATABASE_NAME']
 glue_client = boto3.client('glue') 
 
+import awswrangler as wr
 
 @app.get("/getschema", description="Gets the schema of the database tables")
 @tracer.capture_method
 def get_schema() -> List:
-    try:
-        table_schema_list=[]
-        response = glue_client.get_tables(DatabaseName=database_name)
-        print(response)
-        table_names = [table['Name'] for table in response['TableList']]
-        for table_name in table_names:
-            response = glue_client.get_table(DatabaseName=database_name, Name=table_name)
-            columns = response['Table']['StorageDescriptor']['Columns']
-            schema = {column['Name']: column['Type'] for column in columns}
-            table_schema_list.append({"Table: {}".format(table_name): 'Schema: {}'.format(schema)})
-    except Exception as e:
-        print(f"Error: {str(e)}")
-    return table_schema_list
-
-import awswrangler as wr
+    tables = (
+        wr
+        .catalog
+        .tables(database=database_name)
+        [["Table","Description","Columns"]]
+        .to_dict('records')
+    )
+    print(tables)
+    # try:
+    #     table_schema_list=[]
+    #     response = glue_client.get_tables(DatabaseName=database_name)
+    #     table_names = [table['Name'] for table in response['TableList']]
+    #     for table_name in table_names:
+    #         response = glue_client.get_table(DatabaseName=database_name, Name=table_name)
+    #         columns = response['Table']['StorageDescriptor']['Columns']
+    #         schema = {column['Name']: column['Type'] for column in columns}
+    #         table_schema_list.append({"Table: {}".format(table_name): 'Schema: {}'.format(schema)})
+    # except Exception as e:
+    #     print(f"Error: {str(e)}")
+    # return table_schema_list
+    return tables
 
 @app.get("/querydatabase", description="Query the database with the given SQL query")  
 @tracer.capture_method
 def execute_athena_query(query):
-
+    logger.info(f"SQL Query: {query}")
     df = wr.athena.read_sql_query(query, database=database_name)
     return df.to_dict('records')
 

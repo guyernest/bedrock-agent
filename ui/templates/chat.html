@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.0.2/tailwind.min.css" />
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@latest"></script>
+    <link id="favicon" rel="icon" type="image/x-icon" href="static/favicon.ico">
+    <title>{{ title }}</title>
+</head>
+
+<body class="bg-cool-gray-50 text-gray-800 font-sans leading-relaxed p-6">
+    <div id="recommended-questions" hx-get="/use_case/questions" hx-trigger="newUseCase from:body, load">
+    </div>
+    <form>
+        <label for="question">Ask me a baseball related question</label>
+        <input 
+            class="appearance-none bg-transparent border-none w-full text-gray-700 mr-3 py-1 px-2 focus:outline-none"
+            type="text" 
+            id="question" 
+            name="question"
+            placeholder="Who is the richest player in baseball history?"/>
+        <button 
+            type="submit"
+            class="flex items-center bg-blue-500 hover:bg-blue-700 text-white font-normal py-2 px-4 rounded whitespace-nowrap"
+            hx-post='/chat-about-baseball' 
+            hx-trigger="click, submit"
+            hx-target="#chat-container"
+            hx-swap="beforeend"
+            hx-indicator="#spinner"
+            type="submit">
+            Ask 
+        </button>
+        <div id="spinner" class="htmx-indicator flex flex-row">
+            <div class="basis-1/2">Checking...</div>
+            <div class="basis-1/2">
+                <sl-spinner style="font-size: 25px; --track-width: 5px;"></sl-spinner>
+            </div>
+        </div>
+    </form>
+    <style>
+        .user-message, .bot-response {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .user-message {
+            background-color: #f1f1f1;
+            text-align: left;
+        }
+        .bot-response {
+            background-color: #d1f1d1;
+            text-align: left;
+        }
+    </style>
+    <div id="chat-container" class="w-full md:w-1/2 h-96 border border-2 overflow-y-auto">
+        <!-- Messages will be appended here -->
+    </div>
+    <script>
+        // Listen for htmx events
+        document.body.addEventListener('htmx:afterSwap', function(event) {
+            if (event.detail.target.id === 'chat-container') {
+                var element = document.getElementById("chat-container");
+                element.scrollTop = element.scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>

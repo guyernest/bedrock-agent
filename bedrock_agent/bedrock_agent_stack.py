@@ -6,6 +6,8 @@ from aws_cdk import (
     aws_glue as glue,
     aws_iam as iam,
     aws_lambda as lambda_,
+    aws_ssm as ssm,
+    aws_apprunner as apprunner,
 )
 from constructs import Construct
 from aws_cdk.aws_lambda_python_alpha import PythonFunction
@@ -248,3 +250,99 @@ class BedrockAgentStack(Stack):
             action_group_state="ENABLED",
             parent_action_group_signature="AMAZON.UserInput"
         )
+
+        # Part 4 : Creating the UI
+
+        alias = agent.add_alias(
+            alias_name="test",
+            agent_version="1"
+        )
+
+        # Set the parameters of the agents for UI to read
+        ssm.StringParameter(
+            self, 
+            "AgentIdParameter",
+            parameter_name="/bedrock-agent-data/Bedrock-agent-id",
+            description="Bedrock agent ID",
+            string_value=agent.agent_id
+        )
+
+        ssm.StringParameter(
+            self, 
+            "AgentAliasIdParameter",
+            parameter_name="/bedrock-agent-data/Bedrock-agent-alias-id",
+            description="Bedrock agent alias ID",
+            string_value=alias.alias_id
+        )
+
+        # Create the role for the UI backend
+        ui_backend_role = iam.Role(self, "UI Backend Role",
+            role_name="AppRunnerBedrockAgentUIRole",
+            assumed_by=iam.ServicePrincipal("tasks.apprunner.amazonaws.com"),
+        )
+
+        # Adding the permission to write to the X-Ray Daemon
+        ui_backend_role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name(
+                "AWSXRayDaemonWriteAccess"
+            )
+        )
+
+        # Adding the permission to read from the parameter store
+        ui_backend_role.add_to_policy(iam.PolicyStatement(
+            sid="ReadSSM",
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "ssm:GetParameter",
+                "ssm:GetParameters",
+                "ssm:GetParametersByPath",
+            ],
+            resources=[
+                f"arn:aws:ssm:{self.region}:{self.account}:parameter/bedrock-agent-data/*"
+            ]
+        ))
+
+        # Adding the permission to invoke the agent in Bedrock
+        ui_backend_role.add_to_policy(iam.PolicyStatement(
+            sid="InvokeBedrockAgent",
+            effect=iam.Effect.ALLOW,
+            actions=[
+                "bedrock:InvokeAgent",
+            ],
+            resources=[
+                agent.agent_arn,
+            ]
+        ))
+                
+        github_connection_arn = ssm.StringParameter.value_for_string_parameter(
+            self, 
+            "/bedrock-agent-data/GitHubConnection"
+        )
+
+        repository_url = ssm.StringParameter.value_for_string_parameter(
+            self, 
+            "/bedrock-agent-data/GitHubRepositoryURL"
+        )
+
+        # Create the UI backend using App Runner
+        ui_hosting_service = apprunner.Service(
+            self, 
+            'Service', 
+            source=apprunner.Source.from_git_hub(
+                configuration_source= apprunner.ConfigurationSourceType.REPOSITORY,
+                repository_url= repository_url,
+                branch= 'main',
+                connection= apprunner.GitHubConnection.from_connection_arn(github_connection_arn),
+            ),
+            service_name= "bedrock-agent-chat-ui",
+            auto_deployments_enabled= True,
+            instance_role=ui_backend_role,
+        )
+
+        # Override the value of the SourceConfiguration.CodeRepository.SourceCodeVersion.
+        # to the right value of "ui"
+        ui_hosting_service.node.default_child.add_override(
+            "Properties.SourceConfiguration.CodeRepository.SourceDirectory", 
+            "ui"
+        )
+

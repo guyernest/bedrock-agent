@@ -1,0 +1,14 @@
+<div class="w-full md:w-1/2 grid grid-cols-3 divide-x divide-y" id="recommended-questions" hx-get="/use_case/questions" hx-trigger="newUseCase from:body">
+    <h3 class="col-span-3 text-center font-bold py-2">Questions to try:</h3>
+    {% for question in questions %}
+    <div class="p-4 default text-center font-sans text-sm font-medium hover:bg-gray-100 transition-colors">
+        {{ question }}
+    </div>
+    {% endfor %}
+</div>
+<style>
+    #recommended-questions div {
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);  /* Add shadow to each cell */
+      border-radius: 8px;  /* Rounded corners for each cell */
+    }
+</style>

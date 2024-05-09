@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-multipart
+httpx
+boto3
+requests
+jinja2
+cloudwatch
+langchain-community
