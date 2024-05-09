@@ -198,12 +198,12 @@ class BedrockAgentStack(Stack):
         agent = Agent(
             self,
             f"BedrockAgent",
-            name=f"BedrockAgentForDataQuery",
+            name="BedrockAgentForDataQuery",
             description=f"An agent for generating SQL to Athena database",
-            # foundation_model=BedrockFoundationModel.ANTHROPIC_CLAUDE_INSTANT_V1_2,
             foundation_model=BedrockFoundationModel.ANTHROPIC_CLAUDE_SONNET_V1_0,
             instruction=instruction,
-            # alias_name="latest",
+            should_prepare_agent=True,
+            # alias_name="test",
             # prompt_override_configuration={
             #     "prompt_configurations": [
             #         {
