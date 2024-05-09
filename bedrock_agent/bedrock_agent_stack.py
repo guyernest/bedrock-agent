@@ -9,11 +9,21 @@ from aws_cdk import (
 )
 from constructs import Construct
 from aws_cdk.aws_lambda_python_alpha import PythonFunction
+from cdklabs.generative_ai_cdk_constructs.bedrock import (
+    Agent,
+    ApiSchema,
+    BedrockFoundationModel,
+    PromptType,
+    PromptState, 
+    PromptCreationMode,
+)
 
 class BedrockAgentStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
+
+        # Part 1 : Data Layer (S3, Glue, Athena)
 
         # Create a bucket that will have the data files
         # Create the input bucket based on the region
@@ -72,13 +82,14 @@ class BedrockAgentStack(Stack):
         )
         
         # Create a bucket that will have the results of the queries
+        # This is the format of default bucket name for Athena
         athena_results_bucket_name = f"aws-athena-query-results-{self.account}-{self.region}"
         athena_results_bucket = s3.Bucket(
             self, "AthenaResultsBucket", 
             bucket_name=athena_results_bucket_name
         )
 
-        # Creating the lambda function that will be called by the agent
+        # Part 2 : Creating the lambda function that will be called by the agent
 
         # The execution role for the lambda
         lambda_role = iam.Role(
@@ -176,3 +187,64 @@ class BedrockAgentStack(Stack):
 
         athena_results_bucket.grant_read_write(action_group_function)
         raw_data_bucket.grant_read(action_group_function)
+
+        # Part 3 : Creating the Bedrock Agent
+
+        # Reading the content of the text files in the prompts directory
+        instruction = open(f"./config/instruction.txt", "r").read()
+        # orchestration = open(f"./config/orchestration.txt", "r").read()
+        # post_processing = open(f"./config/post-processing.txt", "r").read()
+
+        agent = Agent(
+            self,
+            f"BedrockAgent",
+            name=f"BedrockAgentForDataQuery",
+            description=f"An agent for generating SQL to Athena database",
+            # foundation_model=BedrockFoundationModel.ANTHROPIC_CLAUDE_INSTANT_V1_2,
+            foundation_model=BedrockFoundationModel.ANTHROPIC_CLAUDE_SONNET_V1_0,
+            instruction=instruction,
+            # alias_name="latest",
+            # prompt_override_configuration={
+            #     "prompt_configurations": [
+            #         {
+            #             "promptType": PromptType.ORCHESTRATION,
+            #             "basePromptTemplate": orchestration,
+            #             "promptState": PromptState.ENABLED,
+            #             "promptCreationMode": PromptCreationMode.OVERRIDDEN,
+            #             "inferenceConfiguration": {
+            #                 "temperature": 0.0,
+            #                 "topP": 1,
+            #                 "topK": 250,
+            #                 "maximumLength": 2048,
+            #                 "stopSequences": ['</function_call>', '</answer>', '</error>'],
+            #             },
+            #         },
+            #         {
+            #             "promptType": PromptType.POST_PROCESSING,
+            #             "basePromptTemplate": post_processing,
+            #             "promptState": PromptState.ENABLED,
+            #             "promptCreationMode": PromptCreationMode.OVERRIDDEN,
+            #             "inferenceConfiguration": {
+            #                 "temperature": 0.0,
+            #                 "topP": 1,
+            #                 "topK": 250,
+            #                 "maximumLength": 2048,
+            #                 "stopSequences": ['/n/nHuman:'],
+            #             },
+            #         },
+            #     ]
+            # }
+        )
+
+        agent.add_action_group(
+            action_group_name=f"SchemaAndQueryAnalyzer",
+            description=f"Use these functions to query the Athena {glue_database.database_name} database",
+            action_group_executor=action_group_function,
+            action_group_state="ENABLED",
+            api_schema=ApiSchema.from_asset(f"./config/openai-schema.json"),  
+        )
+        agent.add_action_group(
+            action_group_name = "UserInputAction",
+            action_group_state="ENABLED",
+            parent_action_group_signature="AMAZON.UserInput"
+        )
