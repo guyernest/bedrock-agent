@@ -7,7 +7,7 @@ from aws_cdk import (
     aws_iam as iam,
     aws_lambda as lambda_,
     aws_ssm as ssm,
-    aws_apprunner as apprunner,
+    aws_apprunner_alpha as apprunner,
 )
 from constructs import Construct
 from aws_cdk.aws_lambda_python_alpha import PythonFunction
@@ -311,6 +311,7 @@ class BedrockAgentStack(Stack):
             ],
             resources=[
                 agent.agent_arn,
+                alias.alias_arn
             ]
         ))
                 
@@ -331,7 +332,7 @@ class BedrockAgentStack(Stack):
             source=apprunner.Source.from_git_hub(
                 configuration_source= apprunner.ConfigurationSourceType.REPOSITORY,
                 repository_url= repository_url,
-                branch= 'main',
+                branch= 'master',
                 connection= apprunner.GitHubConnection.from_connection_arn(github_connection_arn),
             ),
             service_name= "bedrock-agent-chat-ui",

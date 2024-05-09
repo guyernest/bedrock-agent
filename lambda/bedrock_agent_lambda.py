@@ -7,6 +7,8 @@ from aws_lambda_powertools.utilities.typing import LambdaContext
 
 tracer = Tracer()
 logger = Logger()
+from aws_lambda_powertools.event_handler.exceptions import BadRequestError
+ 
 app = BedrockAgentResolver()
 
 import boto3
@@ -46,8 +48,21 @@ def get_schema() -> List:
 @tracer.capture_method
 def execute_athena_query(query):
     logger.info(f"SQL Query: {query}")
-    df = wr.athena.read_sql_query(query, database=database_name)
-    return df.to_dict('records')
+    df = None
+    try:
+        df = (
+            wr
+            .athena
+            .read_sql_query(
+                query, 
+                database=database_name,
+                ctas_approach=False,
+            ).to_dict('records')
+        )
+    except Exception as e:
+        print(f"Error: {str(e)}")    
+        raise BadRequestError(f"Error: {str(e)}")
+    return df
 
 @logger.inject_lambda_context
 @tracer.capture_lambda_handler
@@ -58,3 +73,4 @@ if __name__ == "__main__":
     print("Testing...")
     print(get_schema())
     print(execute_athena_query("Select * from hall_of_fame limit 1"))
+    # print(app.get_openapi_json_schema()) 

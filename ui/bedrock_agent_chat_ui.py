@@ -34,7 +34,8 @@ bedrock_agent_runtime_client = boto3.client('bedrock-agent-runtime')
 async def switch_use_case(request: Request):
     questions = [
          "What was John Denny's salary in 1986?",
-         "What year was Nolan Ryan inducted into the Hall of Fame?"
+         "What year was Nolan Ryan inducted into the Hall of Fame?",
+         "Who is the richest player in the history of baseball?"
     ]
     return templates.TemplateResponse(
         "recommended_questions.html", 
