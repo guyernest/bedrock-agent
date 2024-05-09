@@ -1,1 +1,7 @@
 pytest==6.2.5
+aws-lambda-powertools
+aws_xray_sdk
+boto3
+pydantic
+awswrangler
+
