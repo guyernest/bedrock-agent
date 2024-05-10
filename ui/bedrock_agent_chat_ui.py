@@ -71,7 +71,7 @@ async def ask_question(question: Annotated[str, Form()], request: Request):
         """
     return HTMLResponse(content=html_content)
 
-@app.get("/chat", response_class=HTMLResponse)
+@app.get("/", response_class=HTMLResponse)
 async def overview(request: Request):
     context = {
         "request": request,

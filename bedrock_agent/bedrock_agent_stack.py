@@ -1,4 +1,5 @@
 from aws_cdk import (
+    CfnOutput,
     Duration,
     Stack,
     aws_s3 as s3,
@@ -77,7 +78,7 @@ class BedrockAgentStack(Stack):
             targets={
                 "s3Targets": [
                     {
-                        "path": raw_data_bucket.bucket_name
+                        "path": f'{raw_data_bucket.bucket_name}/data'
                     }
                 ]
             }
@@ -346,4 +347,13 @@ class BedrockAgentStack(Stack):
             "Properties.SourceConfiguration.CodeRepository.SourceDirectory", 
             "ui"
         )
+
+        # Output the bucket name for the raw data
+        CfnOutput(self, "Raw Data Bucket", value=raw_data_bucket.bucket_name)
+
+        # Output the name of the Glue Crawler 
+        CfnOutput(self, "Glue Crawler", value=glue_crawler.name)
+
+        # Output the URL of the UI
+        CfnOutput(self, "UI URL", value=ui_hosting_service.service_url)
 
