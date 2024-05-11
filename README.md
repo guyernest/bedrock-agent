@@ -8,6 +8,10 @@ Every organization has a data lake where they store their data. The data is stor
 
 However, not many people in the organization have SQL knowledge. This makes it difficult for them to benefit from the plethora of data stored in the data lake. To solve this problem, we can build a Bedrock Agent that understand natural language queries and can query the data and reply back with the results.
 
+## Solution Example
+
+![Bedrock Agent Chat UI](images/Bedrock-Agent-Chat.png)
+
 ## Not only a demo
 
 This project is designed not just as a demo. It is a real-world project that can be used in production. The project is built using best practices:
@@ -56,6 +60,12 @@ The solution is built using the following services:
         aws glue start-crawler --name <crawler-name>
 
 1. Open the App Runner URL in the browser (appears in the output of the CDK deployment)
+
+## Main Components
+
+* **[CDK Stack](bedrock_agent/bedrock_agent_stack.py)**: The main CDK stack that deploys the Bedrock Agent and its [instructions](config/instruction.txt).
+* **[Lambda Action](lambda/bedrock_agent_lambda.py)**: The Lambda function that acts as the Action Group for the Bedrock Agent, and its [schema](config/openai-schema.json).
+* **[Chat UI](ui/bedrock_agent_chat_ui.py)**: The FastAPI application that serves the UI for the Bedrock Agent, and its [HTML template](ui/templates/chat.html).
 
 ## CDK Python Instructions
 
