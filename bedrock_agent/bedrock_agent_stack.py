@@ -2,6 +2,7 @@ from aws_cdk import (
     CfnOutput,
     Duration,
     Stack,
+    RemovalPolicy,
     aws_s3 as s3,
     aws_glue_alpha as glue_l2,
     aws_glue as glue,
@@ -9,6 +10,7 @@ from aws_cdk import (
     aws_lambda as lambda_,
     aws_ssm as ssm,
     aws_apprunner_alpha as apprunner,
+    aws_logs as logs,
 )
 from constructs import Construct
 from aws_cdk.aws_lambda_python_alpha import PythonFunction
@@ -179,6 +181,7 @@ class BedrockAgentStack(Stack):
             index="bedrock_agent_lambda.py",
             handler="lambda_handler",
             role=lambda_role,
+            log_retention=logs.RetentionDays.ONE_WEEK,
             environment={
                 "DATABASE_NAME": glue_database.database_name,
                 "ATHENA_RESULTS_BUCKET": athena_results_bucket.bucket_name
