@@ -1,8 +1,7 @@
 from aws_cdk import (
+    Stack,
     CfnOutput,
     Duration,
-    Stack,
-    RemovalPolicy,
     aws_s3 as s3,
     aws_glue_alpha as glue_l2,
     aws_glue as glue,
