@@ -1,5 +1,4 @@
 from typing_extensions import Dict, List
-from pydantic import BaseModel, root_validator
 
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.event_handler import BedrockAgentResolver
@@ -29,19 +28,6 @@ def get_schema() -> List:
         [["Table","Description","Columns"]]
         .to_dict('records')
     )
-    print(tables)
-    # try:
-    #     table_schema_list=[]
-    #     response = glue_client.get_tables(DatabaseName=database_name)
-    #     table_names = [table['Name'] for table in response['TableList']]
-    #     for table_name in table_names:
-    #         response = glue_client.get_table(DatabaseName=database_name, Name=table_name)
-    #         columns = response['Table']['StorageDescriptor']['Columns']
-    #         schema = {column['Name']: column['Type'] for column in columns}
-    #         table_schema_list.append({"Table: {}".format(table_name): 'Schema: {}'.format(schema)})
-    # except Exception as e:
-    #     print(f"Error: {str(e)}")
-    # return table_schema_list
     return tables
 
 @app.get("/querydatabase", description="Query the database with the given SQL query")  
@@ -73,4 +59,4 @@ if __name__ == "__main__":
     print("Testing...")
     print(get_schema())
     print(execute_athena_query("Select * from hall_of_fame limit 1"))
-    # print(app.get_openapi_json_schema()) 
+    print(app.get_openapi_json_schema()) 

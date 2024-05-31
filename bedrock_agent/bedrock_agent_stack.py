@@ -202,7 +202,7 @@ class BedrockAgentStack(Stack):
 
         agent = Agent(
             self,
-            f"BedrockAgent",
+            "BedrockAgent",
             name="BedrockAgentForDataQuery",
             description=f"An agent for generating SQL to Athena database",
             foundation_model=BedrockFoundationModel.ANTHROPIC_CLAUDE_SONNET_V1_0,
