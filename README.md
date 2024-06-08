@@ -67,6 +67,13 @@ The solution is built using the following services:
 * **[Lambda Action](lambda/bedrock_agent_lambda.py)**: The Lambda function that acts as the Action Group for the Bedrock Agent, and its [schema](config/openai-schema.json).
 * **[Chat UI](ui/bedrock_agent_chat_ui.py)**: The FastAPI application that serves the UI for the Bedrock Agent, and its [HTML template](ui/templates/chat.html).
 
+## Messy Data Analysis
+
+The project includes a sample dataset in the [sample-data](sample-data) directory. However, other datasets can be used. The following Jupyter notebook gives an example of how to analyze the data to enrich the AI agent prompt, to better understand the data and answer the natural language questions.
+
+* **[Messy Data Analysis](notebooks/NBA_Play-by-play_analysis.ipynb)** [![Open in SageMaker Studio Lab](https://studiolab.sagemaker.aws/studiolab.svg)](https://studiolab.sagemaker.aws/import/github/guyernest/bedrock-agent/blob/master/notebooks/NBA_Play-by-play_analysis.ipynb)
+
+
 ## CDK Python Instructions
 
 This project is set up like a standard Python project.  The initialization
