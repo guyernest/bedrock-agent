@@ -1,0 +1,35 @@
+<div class='user-message'>User: {{question}}</div>
+<div class='bot-response'>Bot: {{completion}}</div>
+{% for trace in traces %}
+<div class="default text-left font-sans text-sm font-medium hover:bg-gray-100">
+{{ trace.sql }}
+{% if trace.table %}
+    {% if trace.table.message  %}
+        {{ trace.table.message }}
+    {% elif trace.table is iterable 
+        and trace.table is sequence 
+        and trace.table | length > 0 
+        and trace.table[0] is mapping
+    %}
+<table border="1">
+    <thead>
+        <tr>
+            {% for key in trace.table[0].keys() %}
+                <th>{{ key }}</th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in trace.table %}
+        <tr>
+            {% for key in row.keys() %}
+                <td>{{ row[key] }}</td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+    {% endif %}
+{% endif %}
+</div>
+{% endfor %}

@@ -15,7 +15,7 @@
     <div id="recommended-questions" hx-get="/use_case/questions" hx-trigger="newUseCase from:body, load">
     </div>
     <form>
-        <label for="question">Ask me a baseball related question</label>
+        <label for="question">Ask me a question about the data</label>
         <input 
             class="appearance-none bg-transparent border-none w-full text-gray-700 mr-3 py-1 px-2 focus:outline-none"
             type="text" 
@@ -25,7 +25,7 @@
         <button 
             type="submit"
             class="flex items-center bg-blue-500 hover:bg-blue-700 text-white font-normal py-2 px-4 rounded whitespace-nowrap"
-            hx-post='/chat-about-baseball' 
+            hx-post='/ask-question' 
             hx-trigger="click, submit"
             hx-target="#chat-container"
             hx-swap="beforeend"

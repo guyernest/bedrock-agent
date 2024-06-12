@@ -41,29 +41,50 @@ async def switch_use_case(request: Request):
         }
     )
 
+def extract_sql(trace_dict: dict) -> dict:
+    trace = {}
+    if trace_dict.get('orchestrationTrace', {}).get('invocationInput', {}).get('actionGroupInvocationInput', {}).get('apiPath') == '/querydatabase':
+        parameters = trace_dict['orchestrationTrace']['invocationInput']['actionGroupInvocationInput'].get('parameters', [])
+        for param in parameters:
+            if param.get('name') == 'query':
+                trace['sql']  = param.get('value')
+    if trace_dict.get('orchestrationTrace', {}).get('observation', {}).get('actionGroupInvocationOutput', {}).get('text'):
+        query_response = trace_dict['orchestrationTrace']['observation']['actionGroupInvocationOutput'].get('text', "{}")
+        trace['table'] = json.loads(query_response)
+    return trace
 
 # Ask policy question on the org-shield directory
-@app.post("/chat-about-baseball", response_class=HTMLResponse, tags=['bedrock-agent'])
+@app.post("/ask-question", response_class=HTMLResponse, tags=['bedrock-agent'])
 async def ask_question(question: Annotated[str, Form()], request: Request):
 
     response = bedrock_agent_runtime_client.invoke_agent(
         agentAliasId=agent_alias_id,
         agentId=agent_id,
         inputText=question,
-        enableTrace=False,
+        enableTrace=True,
         sessionId="42",
     )
     completion = ""
+    trace = []
 
     for event in response.get("completion"):
         chunk = event.get("chunk", {})
         completion = completion + chunk.get("bytes", b'').decode('utf-8')
+        trace_chunk = event.get("trace", {}).get("trace", {})
+        trace_chunk = extract_sql(trace_chunk)
+        print(trace_chunk)
+        if trace_chunk:
+            trace.append(trace_chunk)
 
-    html_content = f"""
-        <div class='user-message'>User: {question}</div>
-        <div class='bot-response'>Bot: {completion}</div>
-        """
-    return HTMLResponse(content=html_content)
+    context = {
+        "request": request,
+        "question": question,
+        "completion": completion,
+        "traces": trace
+    }
+    response = templates.TemplateResponse("conversation.html", context)
+
+    return response
 
 @app.get("/", response_class=HTMLResponse)
 async def overview(request: Request):
