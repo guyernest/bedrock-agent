@@ -13,6 +13,9 @@ from aws_cdk import (
 )
 from constructs import Construct
 from aws_cdk.aws_lambda_python_alpha import PythonFunction
+from aws_cdk.custom_resources import AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId, Provider
+from aws_cdk.custom_resources import AwsSdkCall
+
 from cdklabs.generative_ai_cdk_constructs.bedrock import (
     Agent,
     ApiSchema,
@@ -21,7 +24,7 @@ from cdklabs.generative_ai_cdk_constructs.bedrock import (
     PromptState, 
     PromptCreationMode,
 )
-
+import json
 class BedrockAgentStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
@@ -93,6 +96,65 @@ class BedrockAgentStack(Stack):
             bucket_name=athena_results_bucket_name
         )
 
+        # Adding custom resources to copy the data to S3 using a Lambda function and invoke
+
+        # Create the Lambda function
+        github_to_s3_function = PythonFunction(
+            self, 
+            'GitHubToS3Function',
+            runtime=lambda_.Runtime.PYTHON_3_12,
+            entry="./lambda",  
+            index="copy_data_to_s3_cr.py",
+            handler='handler',
+            timeout=Duration.seconds(30),        
+        )
+
+        # Grant the Lambda function permissions to write to the S3 bucket
+        raw_data_bucket.grant_write(github_to_s3_function)
+
+        # Create the custom resource
+        github_to_s3_copy = AwsCustomResource(
+            self, 
+            'GitHubToS3Copy',
+            on_create=AwsSdkCall(
+                service='Lambda',
+                action='invoke',
+                parameters={
+                    'FunctionName': github_to_s3_function.function_name,
+                    'Payload': json.dumps({
+                        'ResourceProperties': {
+                            'BucketName': raw_data_bucket.bucket_name
+                        }
+                    })
+                },
+                physical_resource_id=PhysicalResourceId.of('GitHubToS3Copy')
+            ),
+            policy=AwsCustomResourcePolicy.from_statements([
+                iam.PolicyStatement(
+                    actions=['lambda:InvokeFunction'],
+                    resources=[github_to_s3_function.function_arn]
+                ),
+            ])
+        )
+
+        # Adding custom resources to start the Glue Crawler
+
+        start_glue_crawler_cr = AwsCustomResource(
+            self,
+            "StartGlueCrawler",
+            on_create= AwsSdkCall(
+                service="Glue",
+                action="startCrawler",
+                parameters={
+                    "Name": glue_crawler.name
+                },
+                physical_resource_id = PhysicalResourceId.of(f'{self.artifact_id}'),
+            ),
+            policy= AwsCustomResourcePolicy.from_sdk_calls(
+                resources= AwsCustomResourcePolicy.ANY_RESOURCE
+            ),
+        )
+
         # Part 2 : Creating the lambda function that will be called by the agent
 
         # The execution role for the lambda
@@ -115,6 +177,7 @@ class BedrockAgentStack(Stack):
                     "glue:GetTables",
                     "glue:DeleteTable",
                     "glue:CreateTable",
+                    "glue:GetPartitions",
                 ],
                 resources=[
                     f"arn:aws:glue:{self.region}:{self.account}:catalog",
@@ -180,7 +243,7 @@ class BedrockAgentStack(Stack):
             index="bedrock_agent_lambda.py",
             handler="lambda_handler",
             role=lambda_role,
-            log_retention=logs.RetentionDays.ONE_WEEK,
+            # log_retention=logs.RetentionDays.ONE_WEEK,
             environment={
                 "DATABASE_NAME": glue_database.database_name,
                 "ATHENA_RESULTS_BUCKET": athena_results_bucket.bucket_name
@@ -208,7 +271,7 @@ class BedrockAgentStack(Stack):
             foundation_model=BedrockFoundationModel.ANTHROPIC_CLAUDE_SONNET_V1_0,
             instruction=instruction,
             should_prepare_agent=True,
-            # alias_name="test",
+            alias_name="test",
             # prompt_override_configuration={
             #     "prompt_configurations": [
             #         {
@@ -256,10 +319,10 @@ class BedrockAgentStack(Stack):
 
         # Part 4 : Creating the UI
 
-        alias = agent.add_alias(
-            alias_name="test",
-            agent_version="1"
-        )
+        # alias = agent.add_alias(
+        #     alias_name="test",
+        #     agent_version="1"
+        # )
 
         # Set the parameters of the agents for UI to read
         ssm.StringParameter(
@@ -275,12 +338,12 @@ class BedrockAgentStack(Stack):
             "AgentAliasIdParameter",
             parameter_name="/bedrock-agent-data/Bedrock-agent-alias-id",
             description="Bedrock agent alias ID",
-            string_value=alias.alias_id
+            string_value=agent.alias_id
         )
 
         # Create the role for the UI backend
         ui_backend_role = iam.Role(self, "UI Backend Role",
-            role_name="AppRunnerBedrockAgentUIRole",
+            role_name=f"AppRunnerBedrockAgentUIRole-{self.region}",
             assumed_by=iam.ServicePrincipal("tasks.apprunner.amazonaws.com"),
         )
 
@@ -314,7 +377,7 @@ class BedrockAgentStack(Stack):
             ],
             resources=[
                 agent.agent_arn,
-                alias.alias_arn
+                agent.alias_arn
             ]
         ))
                 
