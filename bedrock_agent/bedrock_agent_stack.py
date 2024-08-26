@@ -96,45 +96,13 @@ class BedrockAgentStack(Stack):
             bucket_name=athena_results_bucket_name
         )
 
-        # Adding custom resources to copy the data to S3 using a Lambda function and invoke
-
-        # Create the Lambda function
-        github_to_s3_function = PythonFunction(
-            self, 
-            'GitHubToS3Function',
-            runtime=lambda_.Runtime.PYTHON_3_12,
-            entry="./lambda",  
-            index="copy_data_to_s3_cr.py",
-            handler='handler',
-            timeout=Duration.seconds(30),        
-        )
-
-        # Grant the Lambda function permissions to write to the S3 bucket
-        raw_data_bucket.grant_write(github_to_s3_function)
-
-        # Create the custom resource
-        github_to_s3_copy = AwsCustomResource(
-            self, 
-            'GitHubToS3Copy',
-            on_create=AwsSdkCall(
-                service='Lambda',
-                action='invoke',
-                parameters={
-                    'FunctionName': github_to_s3_function.function_name,
-                    'Payload': json.dumps({
-                        'ResourceProperties': {
-                            'BucketName': raw_data_bucket.bucket_name
-                        }
-                    })
-                },
-                physical_resource_id=PhysicalResourceId.of('GitHubToS3Copy')
-            ),
-            policy=AwsCustomResourcePolicy.from_statements([
-                iam.PolicyStatement(
-                    actions=['lambda:InvokeFunction'],
-                    resources=[github_to_s3_function.function_arn]
-                ),
-            ])
+        # Deploy sample-data folder contents to S3 bucket
+        s3_deployment.BucketDeployment(
+            self,
+            "DeploySampleData",
+            sources=[s3_deployment.Source.asset("./sample-data")],
+            destination_bucket=raw_data_bucket,
+            destination_key_prefix="data"
         )
 
         # Adding custom resources to start the Glue Crawler
