@@ -1,6 +1,10 @@
 # MLOps Best Practices: Building Bedrock Agent to query Athena Database
 
-This project is a part of the MLOps Best Practices series. In this project, we will build a Bedrock Agent to query Athena Database. The project is built using AWS CDK and Python.
+This project is a part of the MLOps Best Practices series. In this project, we will build a Bedrock Agent to query Athena Database. 
+
+This project is a part of the MLOps Best Practices series. It is available as a course on [O'Reilly](https://learning.oreilly.com/videos/-/06302024VIDEOPAIML/) and [EdX](https://learning.edx.org/course/course-v1:AI+bedrock1x+2T2025/home). Check out the course for more in-depth learning.
+
+The project is built using AWS CDK and Python.
 
 ## The Problem
 
