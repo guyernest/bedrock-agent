@@ -10,6 +10,7 @@ from aws_cdk import (
     aws_ssm as ssm,
     aws_apprunner_alpha as apprunner,
     aws_logs as logs,
+    aws_s3_deployment as s3deploy,
 )
 from constructs import Construct
 from aws_cdk.aws_lambda_python_alpha import PythonFunction
@@ -18,6 +19,8 @@ from aws_cdk.custom_resources import AwsSdkCall
 
 from cdklabs.generative_ai_cdk_constructs.bedrock import (
     Agent,
+    AgentActionGroup,
+    ActionGroupExecutor,
     ApiSchema,
     BedrockFoundationModel,
     PromptType,
@@ -97,10 +100,10 @@ class BedrockAgentStack(Stack):
         )
 
         # Deploy sample-data folder contents to S3 bucket
-        s3_deployment.BucketDeployment(
+        s3deploy.BucketDeployment(
             self,
             "DeploySampleData",
-            sources=[s3_deployment.Source.asset("./sample-data")],
+            sources=[s3deploy.Source.asset("./sample-data")],
             destination_bucket=raw_data_bucket,
             destination_key_prefix="data"
         )
@@ -233,10 +236,10 @@ class BedrockAgentStack(Stack):
 
         agent = Agent(
             self,
-            "BedrockAgent",
-            name="BedrockAgentForDataQuery",
+            "BedrockAgentResource",
+            name="BedrockAgentForDataQueryWithClaude35",
             description=f"An agent for generating SQL to Athena database",
-            foundation_model=BedrockFoundationModel.ANTHROPIC_CLAUDE_SONNET_V1_0,
+            foundation_model=BedrockFoundationModel.ANTHROPIC_CLAUDE_3_5_SONNET_V1_0,
             instruction=instruction,
             should_prepare_agent=True,
             alias_name="test",
@@ -272,18 +275,28 @@ class BedrockAgentStack(Stack):
             # }
         )
 
-        agent.add_action_group(
-            action_group_name=f"SchemaAndQueryAnalyzer",
+        actionGroup = AgentActionGroup(
+            self,
+            "LambdaActionGroup",
+            action_group_name="SchemaAndQueryAnalyzer",
             description=f"Use these functions to query the Athena {glue_database.database_name} database",
-            action_group_executor=action_group_function,
+            action_group_executor= ActionGroupExecutor(
+                lambda_=action_group_function
+            ),
             action_group_state="ENABLED",
             api_schema=ApiSchema.from_asset(f"./config/openai-schema.json"),  
         )
-        agent.add_action_group(
-            action_group_name = "UserInputAction",
+
+        agent.add_action_group(actionGroup)
+
+        userInputActionGroup = AgentActionGroup(self,
+            "UserInputActionGroup",
+            action_group_name="UserInputAction",
             action_group_state="ENABLED",
             parent_action_group_signature="AMAZON.UserInput"
         )
+
+        agent.add_action_group(userInputActionGroup)
 
         # Part 4 : Creating the UI
 

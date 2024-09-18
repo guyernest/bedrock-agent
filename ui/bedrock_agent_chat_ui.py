@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request, Form
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from typing import Dict, Any
 import json
 import uvicorn
 import boto3
@@ -41,16 +42,27 @@ async def switch_use_case(request: Request):
         }
     )
 
-def extract_sql(trace_dict: dict) -> dict:
+# Extract the SQL query and reply as it was sent to the Lambda in the orchestration phase.
+def extract_sql(trace_dict: Dict[str, Any]) -> Dict[str, Any]:
     trace = {}
-    if trace_dict.get('orchestrationTrace', {}).get('invocationInput', {}).get('actionGroupInvocationInput', {}).get('apiPath') == '/querydatabase':
-        parameters = trace_dict['orchestrationTrace']['invocationInput']['actionGroupInvocationInput'].get('parameters', [])
+
+    orchestration_trace = trace_dict.get('orchestrationTrace', {})
+    invocation_input = orchestration_trace.get('invocationInput', {})
+    action_group_input = invocation_input.get('actionGroupInvocationInput', {})
+
+    if action_group_input.get('apiPath') == '/querydatabase':
+        parameters = action_group_input.get('parameters', [])
         for param in parameters:
             if param.get('name') == 'query':
-                trace['sql']  = param.get('value')
-    if trace_dict.get('orchestrationTrace', {}).get('observation', {}).get('actionGroupInvocationOutput', {}).get('text'):
-        query_response = trace_dict['orchestrationTrace']['observation']['actionGroupInvocationOutput'].get('text', "{}")
+                trace['sql'] = param.get('value')
+
+    observation = orchestration_trace.get('observation', {})
+    action_group_output = observation.get('actionGroupInvocationOutput', {})
+    query_response = action_group_output.get('text')
+
+    if query_response:
         trace['table'] = json.loads(query_response)
+
     return trace
 
 # Ask policy question on the org-shield directory
@@ -72,7 +84,6 @@ async def ask_question(question: Annotated[str, Form()], request: Request):
         completion = completion + chunk.get("bytes", b'').decode('utf-8')
         trace_chunk = event.get("trace", {}).get("trace", {})
         trace_chunk = extract_sql(trace_chunk)
-        print(trace_chunk)
         if trace_chunk:
             trace.append(trace_chunk)
 
